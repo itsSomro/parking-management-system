@@ -1,0 +1,22 @@
+# Python compiled files (Garbage)
+__pycache__/
+*.pyc
+
+# Virtual Environments (If you use them)
+venv/
+env/
+.env
+
+# IDE Settings (VS Code, PyCharm configurations)
+.vscode/
+.idea/
+
+# Windows System files
+Thumbs.db
+Desktop.ini
+
+# Database/Logs (Optional: Un-comment if you use these)
+# *.db
+# *.log
+
+.venv/
