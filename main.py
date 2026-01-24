@@ -20,12 +20,23 @@ except FileNotFoundError:
 entry_terminal = EntryTerminal(my_parking_lot)
 
 while True:
-    print("\n" + "="*30)
+    stats = my_parking_lot.get_stats()
+
+    print("\n" + "="*40)
     print("~ PARKING MANAGEMENT SYSTEM ~")
-    print("="*30)
+    print(f"Total Spots: {len(my_parking_lot.spots)}")
+    print("="*40 + "\n")
+    # Display Live Counts
+    print(f" 🛵 Scooters: {stats['S'][0]}/{stats['S'][1]} Free")
+    print(f" 🚗 Cars:     {stats['C'][0]}/{stats['C'][1]} Free")
+    print(f" 🚚 Trucks:   {stats['T'][0]}/{stats['T'][1]} Free")
+    print("-"*40 + "\n")
+
     print("1 -> Park a Vehicle\n"
           "2 -> Remove a Vehicle\n"
           "3 -> Show Map\n"
+          "4 -> Find My Car\n"
+          "9 -> Admin: Edit Spots\n"
           "0 -> Exit Program")
     choice = int(input("\n Enter Option :"))
     match choice:
@@ -36,6 +47,8 @@ while True:
         case 3:
             my_parking_lot.show_map()
         case 4:
+            entry_terminal.find_my_car()
+        case 0:
             print("Exiting Program... Data Saved.")
             break
         case 9:

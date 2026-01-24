@@ -1,4 +1,7 @@
+import time
+from datetime import datetime
 from Vehicle import Scooter, Truck, Car, VehicleSize
+import math
 
 
 def create_vehicle_instance(v_type, v_plate):
@@ -19,6 +22,24 @@ def create_vehicle_instance(v_type, v_plate):
 class EntryTerminal:
     def __init__(self, parking_lot):
         self.parking_lot = parking_lot
+
+
+    def slow_print(self, text, speed=0.02):
+        import time
+        import sys
+        for char in text:
+            print(char, end='', flush=True)
+            time.sleep(speed)
+        print()
+
+
+    def find_my_car(self):
+        plate = input("Enter License Plate:")
+        check = self.parking_lot.get_spot_by_plate(plate)
+        if check:
+            print(f"Spot: {check.get_id}")
+        else:
+            print("Error: No spot found.")
 
 
     def edit_spots(self):
@@ -45,7 +66,10 @@ class EntryTerminal:
 
 
     def handle_arrival(self):
-        print("Welcome to the Smart Parking Lot!~\n")
+        self.slow_print("Initializing System...", speed=0.05)
+        time.sleep(0.5)
+        self.slow_print("Welcome to the Smart Parking Lot! 🅿️", speed=0.03)
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         print("Please select Vehicle Type to Park")
         print("1 - Two Wheeler (Scooter/Bike) \n2 - Car (Mini/SUV/Van) \n3 - Heavy Vehicle (Bus/Truck)")
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
@@ -69,18 +93,93 @@ class EntryTerminal:
 
     def handle_exit(self):
         print("\n ~~~ Exiting Terminal ~~~")
-        spot_id = input("Please enter your Spot ID : ")
-        spot = self.parking_lot.get_spot_by_id(spot_id)
+        user_input = input("Please enter your Spot ID (Eg: S-17) or License Plate: ")
+        spot = self.parking_lot.get_spot_by_id(user_input)
+
+        if spot is None:
+            #i.e., LicensePlate Input by User
+            spot = self.parking_lot.get_spot_by_id(user_input)
 
         if spot:
             removed_vehicle = spot.remove_vehicle()
 
             if removed_vehicle:
-                print(f"Vehicle {removed_vehicle.license_plate} has left {spot.get_id}.")
+                vehicle_obj, start_time = removed_vehicle
+
+                amount, billable_hours, duration = self.calculate_bill(start_time, vehicle_obj)
+                print("\n" + "=" * 30)
+                self.slow_print("      PRINTING RECEIPT...    ", speed=0.05)
+                print("=" * 30)
+                time.sleep(0.5)
+
+                print(f"Vehicle:   {vehicle_obj.license_plate}")
+                time.sleep(0.2)
+                print(f"Spot ID:   {spot.get_id}")
+                time.sleep(0.2)
+                print(f"Duration:  {str(duration).split('.')[0]}")
+                time.sleep(0.2)
+
+                print("-" * 30)
+                self.slow_print(f"TOTAL DUE: ₹{amount}", speed=0.1)
+                print("=" * 30 + "\n")
                 print("Thank you for parking with us!")
+
                 self.parking_lot.save_to_csv()
 
             else:
                 print(f"Error: Spot {spot.get_id} was already empty.")
         else:
-            print("Error: Spot ID not found.")
+            print(f"Error: Could not find vehicle or spot matching {user_input}")
+
+
+    def calculate_bill(self, start_time, vehicle_type):
+        end_time = datetime.now()
+        duration = end_time - start_time
+        hours = duration.total_seconds() / 3600
+
+        # Rounding up (charging for the whole hour)
+        billable_hours = math.ceil(hours)
+
+        # ~~~ DIFFERENT RATE METHODS ~~~
+        # (Use ONLY one : Comment the rest)
+
+        #1. BILLING PER HOUR BASIS
+        if vehicle_type == VehicleSize.SCOOTER:
+            rate = 5
+        elif vehicle_type == VehicleSize.CAR:
+            rate = 10
+        else:
+            rate = 20
+
+        return billable_hours * rate, billable_hours, duration
+
+        #2. BILLING ONCE PER TYPE BASIS
+        # if vehicle_type == VehicleSize.SCOOTER:
+        #     rate = 20
+        # elif vehicle_type == VehicleSize.CAR:
+        #     rate = 30
+        # else:
+        #     rate = 50
+        #
+        # return rate, billable_hours, duration
+
+        #3. BILLING DEFAULT + OVERTIME FEE BASIS
+        # if vehicle_type == VehicleSize.SCOOTER:
+        #     rate = 10           # Excess Time Payment Rate
+        #     std_rate = 20       # Standard Bracket Payment
+        # elif vehicle_type == VehicleSize.CAR:
+        #     rate = 20
+        #     std_rate = 30
+        # else:
+        #     rate = 40
+        #     std_rate = 50
+        #
+        # std_time = 5     # Standard Bracket = 5 hours
+        #
+        # if billable_hours > std_time:
+        #     excess_time = billable_hours - std_time
+        #     return std_rate + (excess_time * rate), billable_hours, duration
+        #
+        # else:
+        #     return std_rate, billable_hours, duration
+

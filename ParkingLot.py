@@ -1,6 +1,8 @@
 import csv
-from Vehicle import Vehicle, VehicleSize, Scooter, Car, Truck
+from datetime import datetime
 from ParkingSpot import ParkingSpot
+from Vehicle import VehicleSize, Scooter, Car, Truck
+
 
 class ParkingLot:
     def __init__(self):
@@ -47,6 +49,7 @@ class ParkingLot:
     def get_spot_by_id(self, spot_id):
         return self.spots.get(spot_id)
 
+
     def initialize_parking_lot(self):
         for i in range(1, 6):
             self.add_spot(ParkingSpot(f"S-{i}", VehicleSize.SCOOTER))
@@ -58,24 +61,47 @@ class ParkingLot:
             self.add_spot(ParkingSpot(f"T-{i}", VehicleSize.TRUCK))
 
 
+    def get_spot_by_plate(self, license_plate):
+        for spot in self.spots.values():
+            if not spot.is_free():
+                if spot.vehicle.license_plate.upper() == license_plate.upper():
+                    return spot
+        return None
+
+
     def save_to_csv(self, filename="parking_data.csv"):
         with open(filename, mode='w', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow(["SpotID", "SpotType", "Occupancy", "LicensePlate"])
+            writer.writerow(["SpotID", "SpotType", "Occupancy", "LicensePlate", "EntryTime"])
 
-            for spot in self.spots.values():
+            # SORTING
+            def get_sort_key(spot):
+                s_id = spot.get_id
+
+                try:
+                    prefix, number = s_id.split('-')
+                    return prefix, int(number)
+
+                except ValueError:
+                    return s_id, 0
+
+            sorted_spots = sorted(self.spots.values(), key=get_sort_key)
+
+            for spot in sorted_spots:
                 s_id = spot.get_id
                 s_type = spot.spot_type
                 s_occupancy = not spot.is_free()
 
                 if s_occupancy:
                     s_plate = spot.vehicle.license_plate
+                    s_time = spot.entry_time.strftime("%Y-%m-%d %H:%M:%S")
                 else:
                     s_plate = "None"
+                    s_time = "None"
 
-                writer.writerow([s_id,s_type,s_occupancy,s_plate])
+                writer.writerow([s_id,s_type,s_occupancy,s_plate,s_time])
 
-        print("Parking Lot Data has been saved on file.")
+        print("Parking Lot Data Sorted and Saved!")
 
 
     def load_from_csv(self, filename="parking_data.csv"):
@@ -91,6 +117,14 @@ class ParkingLot:
 
                 if row["Occupancy"] == "True":
                     plate = row["LicensePlate"]
+                    time_str = row["EntryTime"]
+
+                    try:
+                        loaded_time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
+                    except ValueError:
+                        # SAFETY FEATURE INCASE PARKED VEHICLE DOESN'T HAVE TIME OF PARKING
+                        # If time is "None" or broken, just use NOW to prevent crash
+                        loaded_time = datetime.now()
 
                     if spot_type_enum == VehicleSize.SCOOTER:
                         vehicle = Scooter(plate)
@@ -100,12 +134,63 @@ class ParkingLot:
                         vehicle = Truck(plate)
 
                     new_spot.park_vehicle(vehicle)
+                    new_spot._entry_time = loaded_time
 
                 self.add_spot(new_spot)
 
 
     def show_map(self):
-        for spot in self.spots.values():
+        print("\n ~~~ PARKING LOT MAP ~~~")
+
+        def get_sort_key(spot):
+            s_id = spot.get_id
+            try:
+                prefix, number = s_id.split('-')
+                return prefix, int(number)
+            except ValueError:
+                return s_id, 0
+
+        sorted_spots = sorted(self.spots.values(), key=get_sort_key)
+
+        for spot in sorted_spots:
             status = "Occupied" if not spot.is_free() else "Free"
-            print(f" {spot.get_id} -> {status}")
+            print(f"{spot.get_id} -> {status}")
+
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~")
+
+
+    def get_stats(self):
+        total_scooter = 0
+        free_scooter = 0
+
+        total_car = 0
+        free_car = 0
+
+        total_truck = 0
+        free_truck = 0
+
+        for spot in self.spots.values():
+            # Check Type: SCOOTER
+            if spot.spot_type == "SCOOTER":
+                total_scooter += 1
+                if spot.is_free():
+                    free_scooter += 1
+
+            # Check Type: CAR
+            elif spot.spot_type == "CAR":
+                total_car += 1
+                if spot.is_free():
+                    free_car += 1
+
+            # Check Type: TRUCK
+            elif spot.spot_type == "TRUCK":
+                total_truck += 1
+                if spot.is_free():
+                    free_truck += 1
+
+        return {
+            "S": (free_scooter, total_scooter),
+            "C": (free_car, total_car),
+            "T": (free_truck, total_truck)
+        }
 
