@@ -44,6 +44,7 @@ class EntryTerminal:
 
     def edit_spots(self):
         choice = int(input("1 - Add Spots | 2 - Remove Spots"))
+        floor = int(input("Enter Floor (0,1,2): "))
         start = int(input("Start Value :"))
         stop = int(input("Stop Value :")) + 1
         v_type_str = input("S - Scooter | C - Car | T - Truck :").upper()
@@ -56,11 +57,12 @@ class EntryTerminal:
                 v_type_enum = VehicleSize.TRUCK
             case _:
                 v_type_enum = VehicleSize.CAR
+
         if choice == 1:
-            self.parking_lot.add_spots(start, stop, v_type_enum, v_type_str)
+            self.parking_lot.add_spots(floor, start, stop, v_type_enum, v_type_str)
             print("Spots Added Successfully.")
         elif choice == 2:
-            self.parking_lot.remove_spots(start, stop, v_type_enum, v_type_str)
+            self.parking_lot.remove_spots(floor, start, stop, v_type_enum, v_type_str)
             print("Spots Removed Successfully.")
         self.parking_lot.save_to_csv()
 
@@ -141,7 +143,7 @@ class EntryTerminal:
         billable_hours = math.ceil(hours)
 
         # ~~~ DIFFERENT RATE METHODS ~~~
-        # (Use ONLY one : Comment the rest)
+        # (Use ONLY one: Comment the rest)
 
         #1. BILLING PER HOUR BASIS
         if vehicle_type == VehicleSize.SCOOTER:

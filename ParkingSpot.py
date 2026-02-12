@@ -2,15 +2,20 @@ from datetime import datetime
 
 
 class ParkingSpot:
-    def __init__(self, spot_id, spot_type):
+    def __init__(self, spot_id, spot_type, spot_floor):
         self._spot_id = spot_id
         self._spot_type = spot_type
+        self._spot_floor = spot_floor
         self._vehicle = None
         self._entry_time = None
 
     @property
     def vehicle(self):
         return self._vehicle
+
+    @property
+    def spot_floor(self):
+        return self._spot_floor
 
     @property
     def spot_type(self):

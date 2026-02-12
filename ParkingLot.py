@@ -29,14 +29,18 @@ class ParkingLot:
             return False
 
 
-    def add_spots(self, start, stop, v_type_enum, v_type_str):
+    def add_spots(self, floor, start, stop, v_type_enum, v_type_str):
         for i in range(start, stop):
-            self.add_spot(ParkingSpot(f"{v_type_str}-{i}", v_type_enum))
+            #NEW SPOT ID FORMAT (to Include Floors) -> Floor-Type-Number
+            spot_id = f"{floor}-{v_type_str}-{i}"
+            self.add_spot(ParkingSpot(spot_id, v_type_enum))
 
 
-    def remove_spots(self, start, stop, v_type_enum, v_type_str):
+    def remove_spots(self, floor, start, stop, v_type_enum, v_type_str):
         for i in range(start, stop):
-            self.remove_spot(ParkingSpot(f"{v_type_str}-{i}", v_type_enum))
+            #NEW SPOT ID FORMAT (to Include Floors) -> Floor-Type-Number
+            spot_id = f"{floor}-{v_type_str}-{i}"
+            self.remove_spot(ParkingSpot(spot_id, v_type_enum))
 
 
     def find_spot(self, vehicle):
@@ -79,11 +83,20 @@ class ParkingLot:
                 s_id = spot.get_id
 
                 try:
-                    prefix, number = s_id.split('-')
-                    return prefix, int(number)
+                    parts = s_id.split('-')
+
+                    if len(parts) == 3:
+                        floor = int(parts[0])
+                        prefix = parts[1]
+                        number = int(parts[2])
+                        return floor, prefix, number
+
+                    elif len(parts) == 2:
+                        # Treat old spots as "Floor 1" or "Ground"
+                        return 0, parts[0], int(parts[1])
 
                 except ValueError:
-                    return s_id, 0
+                    return 0, s_id, 0
 
             sorted_spots = sorted(self.spots.values(), key=get_sort_key)
 
@@ -113,7 +126,15 @@ class ParkingLot:
                 spot_id = row["SpotID"]
                 spot_type_str = row["SpotType"]
                 spot_type_enum = VehicleSize[spot_type_str]
-                new_spot = ParkingSpot(spot_id, spot_type_enum)
+
+                #For Extracting floor in Spot ID
+                try:
+                    floor_val = int(spot_id.split('-')[0])
+                except ValueError:
+                    #Fallback for old data -> Default to "Floor 0" or "Ground"
+                    floor_val = 0
+
+                new_spot = ParkingSpot(spot_id, spot_type_enum, floor_val)
 
                 if row["Occupancy"] == "True":
                     plate = row["LicensePlate"]
