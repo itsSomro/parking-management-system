@@ -27,11 +27,26 @@ A Python-based Parking Management System designed to streamline vehicle entry, e
 ## 📂 Project Structure
 ```text
 📂 ParkingSpaces/
-├── 📂 src/
-│   ├── EntryTerminal.py
-│   ├── ParkingLot.py
-│   ├── ParkingSpot.py
-│   └── Vehicle.py
-├── main.py
-├── parking_data.csv
-└── README.md
+├── 📂 src/                  # Main Application Source Code
+│   ├── EntryTerminal.py     # Handle vehicle entry logic
+│   ├── ParkingLot.py        # Core logic for floor/spot management
+│   ├── ParkingSpot.py       # Individual spot attributes
+│   ├── Vehicle.py           # Vehicle classes (Car, Bike, SUV)
+│   └── main.py              # Entry point to run the app
+│
+├── 📂 data/                 # Data Storage
+│   └── parking_data.csv     # Persistent storage for parking sessions
+│
+├── 📂 assets/               # Visual Assets
+│   ├── ground_floor.png     # Blueprints for UI mapping
+│   └── ...
+│
+├── 📂 playground/           # R&D and Testing
+│   ├── ImageReaderTest.py   # OpenCV experiments
+│   └── LicensePlateOCR.py   # AI integration tests
+│
+├── 📂 Datasets - LicensePlates/  # (Local Only - Not on GitHub)
+│   └── ...                  # Training images for OCR
+│
+├── .gitignore               # Tells Git to ignore venv and datasets
+└── README.md                # Project documentation
