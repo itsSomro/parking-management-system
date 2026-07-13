@@ -2,19 +2,27 @@ from Vehicle import VehicleSize
 from ParkingSpot import ParkingSpot
 from ParkingLot import ParkingLot
 from EntryTerminal import EntryTerminal
+from DataBases.Database import Database
 
 
-my_parking_lot = ParkingLot()
+db = Database()
+my_parking_lot = ParkingLot(db)
+
+# # TEMPORARY CLEANUP SCRIPT (use incase of wrong vehicle type entered into lot
+# my_parking_lot.cursor.execute("DELETE FROM Master_Table WHERE v_type = 'CAR'")
+# my_parking_lot.conn.commit()
+
+print("Corrupted spots deleted!")
 try:
-    my_parking_lot.load_from_csv("parking_data.csv")
-    print("Data Loaded Successfully!")
+    db.setup_database()
+    print("Database Loaded Successfully!")
 
 except FileNotFoundError:
-    print("Data File could not be opened.")
+    print("Database could not be opened.")
     print("Initializing Parking Data without file ~~~")
     # INITIALIZING WITHOUT CSV FILE
     ParkingLot.initialize_parking_lot(my_parking_lot)
-    print(f"Parking Lot initialized with {len(my_parking_lot.spots)} spots.")
+    print(f"Parking Lot initialized with {my_parking_lot.get_total_spots_count()} spots.")
 
 
 entry_terminal = EntryTerminal(my_parking_lot)
@@ -24,7 +32,7 @@ while True:
 
     print("\n" + "="*40)
     print("~ PARKING MANAGEMENT SYSTEM ~")
-    print(f"Total Spots: {len(my_parking_lot.spots)}")
+    print(f"Total Spots: {my_parking_lot.get_total_spots_count()}")
     print("="*40 + "\n")
     # Display Live Counts
     print(f" 🛵 Scooters: {stats['S'][0]}/{stats['S'][1]} Free")

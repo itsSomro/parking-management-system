@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
 from enum import Enum
 
+
 class VehicleSize(Enum):
-    SCOOTER = 1
-    CAR = 2
-    TRUCK = 3
+    SCOOTER = 'S'
+    CAR = 'C'
+    TRUCK = 'T'
 
 class Vehicle(ABC):
     def __init__(self, license_plate):

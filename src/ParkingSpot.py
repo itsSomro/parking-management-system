@@ -44,10 +44,10 @@ class ParkingSpot:
             return False
 
 
-    def park_vehicle(self, vehicle):
+    def park_vehicle(self, vehicle, historical_datetime=None):
         if self.is_free() and self.can_fit_vehicle(vehicle):
             self._vehicle = vehicle
-            self._entry_time = datetime.now()
+            self._entry_time = historical_datetime if historical_datetime else datetime.now()
             return True
         else:
             return False

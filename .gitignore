@@ -16,7 +16,7 @@ Thumbs.db
 Desktop.ini
 
 # Database/Logs (Optional: Un-comment if you use these)
-# *.db
+ *.db
 # *.log
 
 .venv/

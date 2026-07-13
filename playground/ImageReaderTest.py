@@ -4,7 +4,7 @@ from PIL import Image
 import pytesseract
 
 # image_path = "State-wise_OLX/MH/MH1.jpg"
-image_path = "../Datasets - LicensePlates/State-wise_OLX/AN/AN7.jpg"
+image_path = "Datasets - LicensePlates/State-wise_OLX/AN/AN1.jpg"
 #IMAGE PRE-PROCESSING
 image = cv2.imread(image_path)
 # image = imutils.resize(image, width = 600)
@@ -53,12 +53,12 @@ for contour in contours:
         #Std Indian Plates are 4:1 ratio,accepting range from 2.0 to 6.0
         if 2.0 <= aspect_ratio <= 6.0:
             if  3000 > area > 1500:
-                print(f"✅ FOUND CANDIDATE! Area: {area} | Ratio: {aspect_ratio:.2f}")
+                print(f" FOUND CANDIDATE! Area: {area} | Ratio: {aspect_ratio:.2f}")
                 plate_contour = approx
                 break
 
 if plate_contour is not None:
-    print(f"✅ License Plate Found! Area: {cv2.contourArea(plate_contour)}")
+    print(f" License Plate Found! Area: {cv2.contourArea(plate_contour)}")
 
     final_image = image.copy()
     cv2.drawContours(final_image, [plate_contour], -1, (0,255,0), 3)

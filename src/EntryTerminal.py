@@ -7,11 +7,11 @@ import math
 def create_vehicle_instance(v_type, v_plate):
     vehicle = None
     match v_type:
-        case 1:
+        case 'S':
             vehicle = Scooter(v_plate)
-        case 2:
+        case 'C':
             vehicle = Car(v_plate)
-        case 3:
+        case 'T':
             vehicle = Truck(v_plate)
         case _:
             print("Invalid Vehicle Type Selected!")
@@ -47,7 +47,9 @@ class EntryTerminal:
         floor = int(input("Enter Floor (0,1,2): "))
         start = int(input("Start Value :"))
         stop = int(input("Stop Value :")) + 1
-        v_type_str = input("S - Scooter | C - Car | T - Truck :").upper()
+        raw_input = input("S - Scooter | C - Car | T - Truck :").upper().strip()
+        v_type_str = raw_input[0] if raw_input else 'C'  #  Incase one misinputs Eg: Car/car/CARS etc
+
         match v_type_str:
             case 'S':
                 v_type_enum = VehicleSize.SCOOTER
@@ -64,7 +66,6 @@ class EntryTerminal:
         elif choice == 2:
             self.parking_lot.remove_spots(floor, start, stop, v_type_enum, v_type_str)
             print("Spots Removed Successfully.")
-        self.parking_lot.save_to_csv()
 
 
     def handle_arrival(self):
@@ -73,9 +74,10 @@ class EntryTerminal:
         self.slow_print("Welcome to the Smart Parking Lot! 🅿️", speed=0.03)
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
         print("Please select Vehicle Type to Park")
-        print("1 - Two Wheeler (Scooter/Bike) \n2 - Car (Mini/SUV/Van) \n3 - Heavy Vehicle (Bus/Truck)")
+        print("S - Two Wheeler (Scooter/Bike) \nC - Car (Mini/SUV/Van) \nT - Heavy Vehicle (Bus/Truck)")
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        v_type = int(input("Type : "))
+        raw_input = str(input("Type : ")).upper().strip()
+        v_type = raw_input[0]
 
         print("Please Input Vehicle License Plate No.")
         v_plate = str(input("License Plate : "))
@@ -87,20 +89,23 @@ class EntryTerminal:
 
             if spot:
                 spot.park_vehicle(vehicle_obj)
-                print(f"Success! Parked in {spot.get_id}")
-                self.parking_lot.save_to_csv()
+                entry_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                print(f"Success! Parked in {spot.get_id} ")
+                print(f"Time of Entry: {entry_time}")
+                floor, v_type, spot_no = spot.get_id.split('-')
+                self.parking_lot.log_vehicle_entry(floor, v_type, spot_no, v_plate)
             else:
                 print("Sorry. No Parking Spots Available.")
 
 
     def handle_exit(self):
         print("\n ~~~ Exiting Terminal ~~~")
-        user_input = input("Please enter your Spot ID (Eg: S-17) or License Plate: ")
+        user_input = input("Please enter your Spot ID (Eg: 0-S-17) or License Plate: ")
         spot = self.parking_lot.get_spot_by_id(user_input)
 
         if spot is None:
             #i.e., LicensePlate Input by User
-            spot = self.parking_lot.get_spot_by_id(user_input)
+            spot = self.parking_lot.get_spot_by_plate(user_input)
 
         if spot:
             removed_vehicle = spot.remove_vehicle()
@@ -126,7 +131,8 @@ class EntryTerminal:
                 print("=" * 30 + "\n")
                 print("Thank you for parking with us!")
 
-                self.parking_lot.save_to_csv()
+                floor, vtype, spot_no = spot.get_id.split('-')
+                self.parking_lot.log_vehicle_exit(floor,vtype,spot_no)
 
             else:
                 print(f"Error: Spot {spot.get_id} was already empty.")
@@ -135,7 +141,7 @@ class EntryTerminal:
 
 
     def calculate_bill(self, start_time, vehicle_type):
-        end_time = datetime.now()
+        end_time = datetime.utcnow()
         duration = end_time - start_time
         hours = duration.total_seconds() / 3600
 
