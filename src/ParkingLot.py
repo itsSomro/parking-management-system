@@ -11,12 +11,13 @@ class ParkingLot:
         self.cursor = self.db.cursor
         self.conn = self.db.conn
 
-    def add_spots(self, floor, start, stop, v_type_enum, v_type_str):
+
+    def add_spots(self, floor, start, stop, v_type_str):
         new_spots = [(f"{floor}-{v_type_str}-{i}", floor, v_type_str, i)
                      for i in range(start, stop)]
 
         self.cursor.executemany("""
-            INSERT OR IGNORE INTO Master_Table (spot_id, floor_no, v_type, spot_no)
+            INSERT OR IGNORE INTO lot_inventory (spot_id, floor_no, v_type, spot_no)
             VALUES (?,?,?,?)
         """, new_spots)
 
@@ -24,26 +25,28 @@ class ParkingLot:
         # print(f"Successfully added {stop-start} {v_type_str} spots to floor {floor}")
 
 
-    def remove_spots(self, floor, start, stop, v_type_enum, v_type_str):
+    def remove_spots(self, floor, start, stop, v_type_str):
         spots_to_delete = [(f"{floor}-{v_type_str}-{i}",)
                      for i in range(start, stop)]
 
         self.cursor.executemany("""
-            DELETE FROM Master_Table WHERE spot_id = ?
+            DELETE FROM lot_inventory WHERE spot_id = ?
         """, spots_to_delete)
 
         self.conn.commit()
         # print(f"Successfully removed {stop - start} {v_type_str} spots from floor {floor}")
+
 
     def find_spot(self, vehicle):
         v_type_letter = vehicle.get_type().value
 
         self.cursor.execute("""
             SELECT m.spot_id, m.floor_no
-            FROM Master_Table m
-            LEFT JOIN Active_Parking a
-            ON m.floor_no = a.floor_no AND m.v_type = a.v_type AND m.spot_no = a.spot_no
+            FROM lot_inventory m
+            LEFT JOIN active_sessions a
+            ON m.spot_id = a.spot_id
             WHERE m.v_type = ? AND a.plate_no is NULL
+            ORDER BY m.floor_no ASC, m.spot_no ASC
             LIMIT 1
         """, (v_type_letter,))
 
@@ -55,10 +58,11 @@ class ParkingLot:
 
         return None
 
+
     def get_spot_by_id(self, spot_id):
         self.cursor.execute("""
             SELECT floor_no, v_type, spot_no
-            FROM Master_Table WHERE spot_id = ?
+            FROM lot_inventory WHERE spot_id = ?
         """, (spot_id,))
 
         spot_data = self.cursor.fetchone()
@@ -73,9 +77,9 @@ class ParkingLot:
 
         self.cursor.execute("""
             SELECT plate_no, entry_time
-            FROM Active_Parking
-            WHERE floor_no = ? AND v_type = ? AND spot_no = ?
-        """, (floor, vtype, spot_no))
+            FROM active_sessions
+            WHERE v_type = ? AND spot_id = ?
+        """, (vtype, spot_id))
 
         active_data = self.cursor.fetchone()
 
@@ -95,30 +99,30 @@ class ParkingLot:
         return new_spot
 
 
-    def initialize_parking_lot(self):
-        for i in range(1, 6):
-            self.add_spot(ParkingSpot(f"S-{i}", VehicleSize.SCOOTER))
+    def configure_lot(self, floor_configs):
+        # Accepts in a 2d dictionary format: For eg: {0 : {'S':20, 'C':20, 'T':10}, 1 : {'S':20, 'C':20}
+        for floor, vehicle_counts in floor_configs.items():
+            for v_type, count in vehicle_counts.items():
+                if count > 0:
+                    start = 1
+                    stop = 1 + count
 
-        for i in range(1, 11):
-            self.add_spot(ParkingSpot(f"C-{i}", VehicleSize.CAR))
-
-        for i in range(1, 6):
-            self.add_spot(ParkingSpot(f"T-{i}", VehicleSize.TRUCK))
+                    self.add_spots(floor, start, stop, v_type)
 
 
     def get_spot_by_plate(self, license_plate):
         self.cursor.execute("""
-            SELECT floor_no, v_type, spot_no, entry_time 
-            FROM Active_Parking 
-            WHERE plate_no = ?
-        """, (license_plate,))
+                            SELECT v_type, spot_id, entry_time
+                            FROM active_sessions
+                            WHERE plate_no = ?
+                            """, (license_plate,))
 
         active_data = self.cursor.fetchone()
         if active_data is None:
             return None
 
-        floor, vtype, spot_no, time_of_entry = active_data
-        spot_id = f"{floor}-{vtype}-{spot_no}"
+        vtype, spot_id, time_of_entry = active_data
+        floor = int(spot_id.split('-')[0])
 
         v_enum = VehicleSize(vtype)
         if vtype == "S":
@@ -135,20 +139,39 @@ class ParkingLot:
         return new_spot
 
 
-    def log_vehicle_entry(self, floor, vtype, spot_no, plate_no):
+    def log_vehicle_entry(self, vtype, spot_id, plate_no):
         self.cursor.execute("""
-            INSERT INTO Active_Parking (floor_no, v_type, spot_no, plate_no, entry_time)
-            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-        """, (floor, vtype, spot_no, plate_no))
+            INSERT INTO active_sessions (v_type, spot_id, plate_no, entry_time)
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+        """, (vtype, spot_id, plate_no))
         self.conn.commit()
 
 
-    def log_vehicle_exit(self, floor, vtype, spot_no):
+    def log_vehicle_exit(self, exit_time, spot_id, fee):
         self.cursor.execute("""
-            DELETE FROM Active_Parking
-            WHERE floor_no = ? AND v_type = ? AND spot_no = ?
-        """, (floor, vtype, spot_no))
-        self.conn.commit()
+            SELECT plate_no, entry_time, v_type, spot_id
+            FROM active_sessions
+            WHERE spot_id = ?
+        """, (spot_id,))
+
+        active_data = self.cursor.fetchone()
+        if active_data:
+            plate_no, entry_time, v_type, spot_id = active_data
+
+            self.cursor.execute("""
+                INSERT INTO session_logs (plate_no, entry_time, exit_time, v_type, spot_id, fee) 
+                VALUES (?,?, ?, ?, ?, ?)
+            """, (plate_no, entry_time, exit_time, v_type, spot_id, fee))
+
+            self.cursor.execute("""
+                DELETE FROM active_sessions
+                WHERE v_type = ? AND spot_id = ?
+            """, (v_type, spot_id))
+            self.conn.commit()
+            return True
+
+        else:
+            return False
 
 
     def show_map(self):
@@ -158,9 +181,9 @@ class ParkingLot:
 
         self.cursor.execute("""
             SELECT m.floor_no, m.v_type, m.spot_no, a.plate_no
-            FROM Master_Table m
-            LEFT JOIN Active_Parking a
-            ON m.floor_no == a.floor_no AND m.v_type == a.v_type AND m.spot_no == a.spot_no
+            FROM lot_inventory m
+            LEFT JOIN active_sessions a
+            ON m.spot_id = a.spot_id
             ORDER BY m.floor_no, m.v_type, m.spot_no
         """)
 
@@ -194,14 +217,14 @@ class ParkingLot:
     def get_stats(self):
         self.cursor.execute("""
             SELECT v_type, COUNT(*)
-            FROM Master_Table
+            FROM lot_inventory
             GROUP BY v_type 
         """)
         total_counts = dict(self.cursor.fetchall())
 
         self.cursor.execute("""
             SELECT v_type, COUNT(*)
-            FROM Active_Parking
+            FROM active_sessions
             GROUP BY v_type 
         """)
         occupied_counts = dict(self.cursor.fetchall())
@@ -219,7 +242,7 @@ class ParkingLot:
     def get_total_spots_count(self):
         self.cursor.execute("""
             SELECT COUNT(*)
-            FROM Master_Table
+            FROM lot_inventory
         """)
 
         count = self.cursor.fetchone()

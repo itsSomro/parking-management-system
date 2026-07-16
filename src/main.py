@@ -2,7 +2,7 @@ from Vehicle import VehicleSize
 from ParkingSpot import ParkingSpot
 from ParkingLot import ParkingLot
 from EntryTerminal import EntryTerminal
-from DataBases.Database import Database
+from db.Database import Database
 
 
 db = Database()
@@ -11,19 +11,25 @@ my_parking_lot = ParkingLot(db)
 # # TEMPORARY CLEANUP SCRIPT (use incase of wrong vehicle type entered into lot
 # my_parking_lot.cursor.execute("DELETE FROM Master_Table WHERE v_type = 'CAR'")
 # my_parking_lot.conn.commit()
+# print("Corrupted spots deleted!")
 
-print("Corrupted spots deleted!")
-try:
-    db.setup_database()
-    print("Database Loaded Successfully!")
+total_spots = my_parking_lot.get_total_spots_count()
 
-except FileNotFoundError:
-    print("Database could not be opened.")
-    print("Initializing Parking Data without file ~~~")
-    # INITIALIZING WITHOUT CSV FILE
-    ParkingLot.initialize_parking_lot(my_parking_lot)
-    print(f"Parking Lot initialized with {my_parking_lot.get_total_spots_count()} spots.")
+if total_spots > 0:
+    print("Database Loaded Successfully")
+    print(f"Parking Lot loaded with {total_spots} spots")
+else:
+    print("No existing parking spots found")
+    print("Initializing Parking Data for 1st time-")
 
+    default_layout = {
+        0: {'S':20, 'C':20, 'T':10},
+        1: {'S':20, 'C':20, 'T':0},
+        2: {'S':0, 'C':10, 'T':0}
+    }
+
+    my_parking_lot.configure_lot(default_layout)
+    print(f"Parking Lot initialized with {my_parking_lot.get_total_spots_count()} spots")
 
 entry_terminal = EntryTerminal(my_parking_lot)
 

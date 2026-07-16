@@ -93,7 +93,7 @@ class EntryTerminal:
                 print(f"Success! Parked in {spot.get_id} ")
                 print(f"Time of Entry: {entry_time}")
                 floor, v_type, spot_no = spot.get_id.split('-')
-                self.parking_lot.log_vehicle_entry(floor, v_type, spot_no, v_plate)
+                self.parking_lot.log_vehicle_entry(v_type, spot.get_id, v_plate)
             else:
                 print("Sorry. No Parking Spots Available.")
 
@@ -113,7 +113,7 @@ class EntryTerminal:
             if removed_vehicle:
                 vehicle_obj, start_time = removed_vehicle
 
-                amount, billable_hours, duration = self.calculate_bill(start_time, vehicle_obj)
+                amount, billable_hours, duration, exit_time = self.calculate_bill(start_time, vehicle_obj)
                 print("\n" + "=" * 30)
                 self.slow_print("      PRINTING RECEIPT...    ", speed=0.05)
                 print("=" * 30)
@@ -131,8 +131,9 @@ class EntryTerminal:
                 print("=" * 30 + "\n")
                 print("Thank you for parking with us!")
 
-                floor, vtype, spot_no = spot.get_id.split('-')
-                self.parking_lot.log_vehicle_exit(floor,vtype,spot_no)
+                log_success = self.parking_lot.log_vehicle_exit(exit_time, spot.get_id, amount)
+                if not log_success:
+                    print(f"Warning: No record found for {spot.get_id}")
 
             else:
                 print(f"Error: Spot {spot.get_id} was already empty.")
@@ -159,7 +160,7 @@ class EntryTerminal:
         else:
             rate = 20
 
-        return billable_hours * rate, billable_hours, duration
+        return billable_hours * rate, billable_hours, duration, end_time
 
         #2. BILLING ONCE PER TYPE BASIS
         # if vehicle_type == VehicleSize.SCOOTER:
