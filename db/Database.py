@@ -1,5 +1,7 @@
 import sqlite3
 import os
+import bcrypt
+
 
 class Database:
     def __init__(self):
@@ -45,8 +47,8 @@ class Database:
             CREATE TABLE IF NOT EXISTS users (
                 user_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE,
-                password_hash TEXT,
-                role TEXT
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL
             )
         """)
 
@@ -69,3 +71,63 @@ class Database:
             self.cursor.execute(f"DROP TABLE IF EXISTS {table}")
 
         self.conn.commit()
+
+
+    def setup_admin_account(self):
+        self.cursor.execute("""
+            SELECT COUNT(*) 
+            FROM users
+            WHERE username = 'admin'
+        """)
+        admin_check = self.cursor.fetchone()[0]
+
+        if admin_check == 0:
+            raw_password = "admin123"
+            hashed_password = bcrypt.hashpw(raw_password.encode('utf-8'), bcrypt.gensalt())
+
+            self.cursor.execute("""
+                INSERT INTO users (username, password_hash, role)
+                VALUES (?, ?, ?)
+            """, ('admin', hashed_password.decode('utf-8'), 'Admin'))
+
+            self.conn.commit()
+            return True #to tell admin acc has been generated
+
+        return False #incase admin acc alr present
+
+
+    def add_new_user(self, username, raw_password, role):
+        try:
+            hashed_password = bcrypt.hashpw(raw_password.encode('utf-8'), bcrypt.gensalt())
+
+            self.cursor.execute("""
+                INSERT INTO users (username, password_hash, role)
+                VALUES (?, ?, ?)
+            """, (username, hashed_password.decode('utf-8'), role))
+
+            self.conn.commit()
+            return True
+
+        except sqlite3.IntegrityError:
+            return False
+
+
+    def verify_login(self, username, entered_password):
+        self.cursor.execute("""
+            SELECT password_hash, role
+            FROM users
+            WHERE username = ?
+        """, (username,))
+
+        user_data = self.cursor.fetchone()
+
+        if user_data:
+            stored_hash, role = user_data
+
+            entered_bytes = entered_password.encode('utf-8')
+            stored_bytes = stored_hash.encode('utf-8')
+
+            if bcrypt.checkpw(entered_bytes, stored_bytes):
+                return True, role
+
+        return False, None

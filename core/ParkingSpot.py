@@ -38,7 +38,11 @@ class ParkingSpot:
 
     def can_fit_vehicle(self, vehicle):
         v_type = vehicle.get_type()
-        if self._spot_type == v_type:
+
+        spot_val = self._spot_type.value if hasattr(self._spot_type, "value") else self._spot_type
+        veh_val = v_type.value if hasattr(v_type, "value") else v_type
+
+        if spot_val == veh_val:
             return True
         else:
             return False

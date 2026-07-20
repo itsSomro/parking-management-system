@@ -1,8 +1,7 @@
+import math
 from datetime import datetime
-from shapely.speedups import available
-from ParkingSpot import ParkingSpot
-from Vehicle import VehicleSize, Scooter, Car, Truck
-import sqlite3
+from core.ParkingSpot import ParkingSpot
+from core.Vehicle import VehicleSize, Scooter, Car, Truck
 
 
 class ParkingLot:
@@ -78,10 +77,11 @@ class ParkingLot:
         self.cursor.execute("""
             SELECT plate_no, entry_time
             FROM active_sessions
-            WHERE v_type = ? AND spot_id = ?
-        """, (vtype, spot_id))
+            WHERE spot_id = ?
+        """, (spot_id,))
 
         active_data = self.cursor.fetchone()
+        print(f"\n[DEBUG] active_data fetchone result: {active_data}")
 
         if active_data:
             plate_num, time_of_entry = active_data
@@ -94,13 +94,15 @@ class ParkingLot:
                 vehicle = Truck(plate_num)
 
             db_time = datetime.strptime(time_of_entry, "%Y-%m-%d %H:%M:%S")
+            print(f"[DEBUG] Attempting to park {vehicle.license_plate} into {new_spot.get_id}")
             new_spot.park_vehicle(vehicle, historical_datetime=db_time)
+            print(f"[DEBUG] Is spot free after parking? {new_spot.is_free()}\n")
 
         return new_spot
 
 
     def configure_lot(self, floor_configs):
-        # Accepts in a 2d dictionary format: For eg: {0 : {'S':20, 'C':20, 'T':10}, 1 : {'S':20, 'C':20}
+        # floor_configs - Accepts in a 2d dictionary format: For eg: {0 : {'S':20, 'C':20, 'T':10}, 1 : {'S':20, 'C':20}
         for floor, vehicle_counts in floor_configs.items():
             for v_type, count in vehicle_counts.items():
                 if count > 0:
@@ -249,3 +251,88 @@ class ParkingLot:
         return count[0] if count else 0
 
 
+    def are_rates_configured(self):
+        self.cursor.execute("""
+            SELECT COUNT(*)
+            FROM billing_rates
+        """)
+
+        rate_count = self.cursor.fetchone()[0]
+        return rate_count > 0
+
+
+    def update_rates(self, rate_configs):
+        # rate_configs - Accepts in a 1d dictionary format: For eg: {'S':5, 'C':10, 'T':20}
+        for v_type, rate in rate_configs.items():
+            self.cursor.execute("""
+                                INSERT OR REPLACE INTO billing_rates (v_type, hourly_rate)
+                                VALUES (?, ?)
+                                """, (v_type, rate))
+
+
+    def calculate_bill(self, start_time, vehicle_type):
+        v_type = vehicle_type.get_type()
+        v_type_str = v_type.value if hasattr(v_type, "value") else v_type
+
+        end_time = datetime.utcnow()
+        duration = end_time - start_time
+        hours = duration.total_seconds() / 3600
+
+        # Rounding up (charging for the whole hour)
+        billable_hours = math.ceil(hours)
+
+        self.cursor.execute("""
+            SELECT v_type, hourly_rate
+            FROM billing_rates
+                WHERE v_type = ?
+        """, (v_type_str,))
+
+        rate_data = self.cursor.fetchone()
+        if rate_data:
+            rate = rate_data[1]
+        else:
+            print(f"Warning: No rate found for {v_type_str}. Defaulting to ₹10/hr")
+            rate = 10
+
+        # ~~~ DIFFERENT RATE METHODS ~~~
+        # (Use ONLY one: Comment the rest)
+
+        #1. BILLING PER HOUR BASIS
+        # if vehicle_type == VehicleSize.SCOOTER:
+        #     rate = 5
+        # elif vehicle_type == VehicleSize.CAR:
+        #     rate = 10
+        # else:
+        #     rate = 20
+
+        return billable_hours * rate, billable_hours, duration, end_time
+
+        #2. BILLING ONCE PER TYPE BASIS
+        # if vehicle_type == VehicleSize.SCOOTER:
+        #     rate = 20
+        # elif vehicle_type == VehicleSize.CAR:
+        #     rate = 30
+        # else:
+        #     rate = 50
+        #
+        # return rate, billable_hours, duration
+
+        #3. BILLING DEFAULT + OVERTIME FEE BASIS
+        # if vehicle_type == VehicleSize.SCOOTER:
+        #     rate = 10           # Excess Time Payment Rate
+        #     std_rate = 20       # Standard Bracket Payment
+        # elif vehicle_type == VehicleSize.CAR:
+        #     rate = 20
+        #     std_rate = 30
+        # else:
+        #     rate = 40
+        #     std_rate = 50
+        #
+        # std_time = 5     # Standard Bracket = 5 hours
+        #
+        # if billable_hours > std_time:
+        #     excess_time = billable_hours - std_time
+        #     return std_rate + (excess_time * rate), billable_hours, duration
+        #
+        # else:
+        #     return std_rate, billable_hours, duration
