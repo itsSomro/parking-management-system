@@ -4,9 +4,11 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from sklearn.model_selection import train_test_split
 
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
+DATASET_ROOT = os.path.join(PROJECT_ROOT, "Datasets - LicensePlates")
 
-DATASET_ROOT = r"C:\Users\SOHAM\PycharmProjects\ParkingSpaces\Datasets - LicensePlates"
-OUTPUT_DIR = r"C:\Users\SOHAM\PycharmProjects\ParkingSpaces\yolo_dataset"
+OUTPUT_DIR = os.path.join(PROJECT_ROOT, "yolo_dataset")
 
 folders = ["images/train", "images/test",
            "labels/train", "labels/test"]
