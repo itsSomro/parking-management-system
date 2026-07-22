@@ -6,7 +6,7 @@ import os
 
 # --------------------------------------------------------------------------
 # 1. SETUP & INITIALIZATION
-URL = "http://Somro:sohamv123@192.168.1.4:8080/video"
+URL = "http://username:password@192.168.1.X:8080/video"
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)

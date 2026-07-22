@@ -1,7 +1,7 @@
 import cv2
 
 
-url = "http://Somro:sohamv123@192.168.1.4:8080/video"
+url = "http://username:password@192.168.1.X:8080/video"
 
 print(f"Attempting to connect to: {url}")
 cap = cv2.VideoCapture(url)
