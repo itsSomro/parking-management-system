@@ -17,7 +17,18 @@ Desktop.ini
 
 # Database/Logs (Optional: Un-comment if you use these)
 *.db
-# *.log
+*.log
 
 .venv/
+
+# Ignore Playground and temp files
+playground/
+test.txt
+
+# Ignore YOLO output and training datasets
 Datasets - LicensePlates/
+runs/
+yolo_dataset/
+
+# Ignore AI Weights
+*.pt

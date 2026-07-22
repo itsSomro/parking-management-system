@@ -1,13 +1,14 @@
 import sqlite3
 import os
 import bcrypt
+import pandas as pd
 
 
 class Database:
     def __init__(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         db_path = os.path.join(current_dir, "parking_data.db")
-        self.conn = sqlite3.connect(db_path)
+        self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self.cursor = self.conn.cursor()
 
         self.cursor.execute("PRAGMA foreign_keys = ON;")
@@ -131,3 +132,18 @@ class Database:
                 return True, role
 
         return False, None
+
+
+    def get_financial_history(self):
+        query = """
+            SELECT entry_time, fee
+            FROM session_logs 
+                """
+
+        df = pd.read_sql_query(query, self.conn)
+
+        if not df.empty:
+            df['entry_time'] = pd.to_datetime(df['entry_time'])
+
+        return df
+
