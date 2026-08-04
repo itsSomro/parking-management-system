@@ -14,85 +14,50 @@ db = Database()
 @router.get("/login", response_class=HTMLResponse)
 def show_login_page():
     html_content = """
-    <html>
+        <!DOCTYPE html>
+        <html lang="en">
         <head>
-            <title>System Login</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Login - ParkSmart</title>
             <style>
-                body {
-                    background-color: #121212;
-                    color: white;
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    height: 100vh;
-                    margin: 0;
-                }
-                .login-box {
-                    background-color: #1e1e1e;
-                    padding: 40px;
-                    border-radius: 12px;
-                    border: 1px solid #333;
-                    width: 100%;
-                    max-width: 400px;
-                    box-sizing: border-box;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-                }
-                h2 { text-align: center; margin-top: 0; margin-bottom: 30px; color: #ffffff; }
+                @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&display=swap');
 
-                .input-group { margin-bottom: 20px; }
-                .input-group label { display: block; margin-bottom: 8px; color: #aaaaaa; font-size: 0.9rem; }
+                body { background-color: #121212; color: white; font-family: -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+                .login-box { background-color: #1e1e1e; padding: 50px 40px; border-radius: 12px; border: 1px solid #333; width: 100%; max-width: 420px; box-sizing: border-box; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
 
-                .input-group input {
-                    width: 100%;
-                    padding: 12px;
-                    border-radius: 8px;
-                    border: 1px solid #444;
-                    background-color: #2a2a2a;
-                    color: white;
-                    font-size: 1rem;
-                    box-sizing: border-box;
-                    transition: border-color 0.2s;
-                }
+                h1.main-title { text-align: center; font-family: 'Cinzel', serif; font-weight: 800; font-size: 3.2rem; margin-top: 0; margin-bottom: 5px; color: #ffffff; letter-spacing: 3px; }
+                .subtitle { display: block; font-family: sans-serif; font-size: 1rem; color: #888; letter-spacing: 4px; text-transform: uppercase; text-align: center; margin-bottom: 40px; }
+
+                .input-group { margin-bottom: 25px; }
+                .input-group label { display: block; margin-bottom: 8px; color: #aaaaaa; font-size: 0.95rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+                .input-group input { width: 100%; padding: 15px; border-radius: 8px; border: 1px solid #444; background-color: #2a2a2a; color: white; font-size: 1.1rem; box-sizing: border-box; transition: border-color 0.2s; }
                 .input-group input:focus { outline: none; border-color: #00d09c; }
 
-                .submit-btn {
-                    width: 100%;
-                    padding: 15px;
-                    background-color: #00d09c;
-                    color: #121212;
-                    border: none;
-                    border-radius: 8px;
-                    font-size: 1.1rem;
-                    font-weight: bold;
-                    cursor: pointer;
-                    transition: background-color 0.2s;
-                    margin-top: 10px;
-                }
+                .submit-btn { width: 100%; padding: 16px; background-color: #00d09c; color: #121212; border: none; border-radius: 8px; font-size: 1.2rem; font-weight: bold; cursor: pointer; transition: background-color 0.2s; margin-top: 10px; }
                 .submit-btn:hover { background-color: #00a87d; }
             </style>
         </head>
         <body>
             <div class="login-box">
-                <h2>Parking Control System</h2>
+                <h1 class="main-title">ParkSmart</h1>
+                <span class="subtitle">System Login</span>
 
                 <form action="/login" method="POST">
                     <div class="input-group">
                         <label for="username">Username</label>
                         <input type="text" id="username" name="username" required autocomplete="off">
                     </div>
-
                     <div class="input-group">
                         <label for="password">Password</label>
                         <input type="password" id="password" name="password" required>
                     </div>
-
                     <button type="submit" class="submit-btn">Sign In</button>
                 </form>
             </div>
         </body>
-    </html>
-    """
+        </html>
+        """
     return HTMLResponse(content=html_content)
 
 
@@ -111,7 +76,7 @@ def handle_login(
         if role.lower() == 'admin':
             redirect_url = "/admin/dashboard"
         else:
-            redirect_url = "/operator"
+            redirect_url = "/operator/dashboard"
 
         redirect = RedirectResponse(url=redirect_url, status_code=302)
         redirect.set_cookie(key="access_token", value=f"{username}_{role}")

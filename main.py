@@ -56,7 +56,7 @@ def main():
             admin_board.launch()
 
         elif user_role == "Operator":
-            operator_board = OperatorTerminal(my_parking_lot)
+            operator_board = OperatorTerminal()
             operator_board.operator_dashboard()
 
     else:

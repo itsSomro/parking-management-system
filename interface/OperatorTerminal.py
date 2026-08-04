@@ -1,6 +1,9 @@
 import time
 from datetime import datetime
+
+from core.ParkingLot import ParkingLot
 from core.Vehicle import Scooter, Truck, Car, VehicleSize
+from db.Database import Database
 
 
 def create_vehicle_instance(v_type, v_plate):
@@ -19,8 +22,12 @@ def create_vehicle_instance(v_type, v_plate):
 
 
 class OperatorTerminal:
-    def __init__(self, parking_lot):
-        self.parking_lot = parking_lot
+    parking_lot = None
+
+    def __init__(self):
+        db = Database()
+        OperatorTerminal.parking_lot = ParkingLot(db)
+
 
     def operator_dashboard(self):
         # Pressing 0 returns Admin to Admin Menu but logs out if user is Operator
@@ -148,5 +155,154 @@ class OperatorTerminal:
             print(f"Error: Could not find vehicle or spot matching {user_input}")
 
 
+    @classmethod
+    def process_web_arrival(cls, v_type, v_plate):
+        """
+        Web-safe version of handle_arrival.
+        Takes inputs directly from FastAPI and returns a dictionary response.
+        """
+        vehicle_obj = create_vehicle_instance(v_type, v_plate)
+        v_plate = v_plate.upper()
+
+        if vehicle_obj is not None:
+            spot = cls.parking_lot.find_spot(vehicle_obj)
+
+            if spot:
+                spot.park_vehicle(vehicle_obj)
+                entry_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+                cls.parking_lot.log_vehicle_entry(v_type, spot.get_id, v_plate)
+
+                return {
+                    "status": "success",
+                    "spot_id": spot.get_id,
+                    "entry_time": entry_time
+                }
+            else:
+                return {"status": "error", "message": "Sorry. No Parking Spots Available for this vehicle type."}
+        else:
+            return {"status": "error", "message": "Failed to create vehicle instance."}
+
+
+    @classmethod
+    def process_web_exit_lookup(cls, search_query):
+        """
+        STEP 1: Safely fetches vehicle session data and calculates the CURRENT bill
+        without actually removing the vehicle from the spot.
+        """
+        # 1. Direct DB check to avoid altering OOP spot states prematurely
+        cls.parking_lot.cursor.execute("""
+            SELECT plate_no, spot_id, entry_time, v_type
+            FROM active_sessions
+            WHERE plate_no = ?
+            OR spot_id = ?
+        """, (search_query, search_query))
+
+        session = cls.parking_lot.cursor.fetchone()
+        if not session:
+            return {"status": "error", "message": "Vehicle not found in active sessions."}
+
+        plate_no, spot_id, entry_time_str, vtype = session
+
+        start_time = datetime.strptime(entry_time_str, "%Y-%m-%d %H:%M:%S")
+        if vtype == "S":
+            vehicle_obj = Scooter(plate_no)
+        elif vtype == "C":
+            vehicle_obj = Car(plate_no)
+        else:
+            vehicle_obj = Truck(plate_no)
+
+        # 3. Calculate current bill (does not save to DB)
+        amount, billable_hours, duration, exit_time = cls.parking_lot.calculate_bill(start_time, vehicle_obj)
+
+        return {
+            "status": "success",
+            "plate": plate_no,
+            "spot": spot_id,
+            "entry": entry_time_str,
+            "duration": str(duration).split('.')[0],
+            "fee": amount,
+            "type": vtype
+        }
+
+
+    @classmethod
+    def process_web_exit_checkout(cls, search_query):
+        """
+        STEP 2: The final confirmation. Removes the vehicle from memory,
+        logs the exit, and finalizes the transaction in the database.
+        """
+        spot = cls.parking_lot.get_spot_by_id(search_query)
+        if not spot:
+            spot = cls.parking_lot.get_spot_by_plate(search_query)
+
+        if spot:
+            removed_vehicle = spot.remove_vehicle()
+
+            if removed_vehicle:
+                vehicle_obj, start_time = removed_vehicle
+                amount, billable_hours, duration, exit_time = cls.parking_lot.calculate_bill(start_time, vehicle_obj)
+                log_success = cls.parking_lot.log_vehicle_exit(exit_time, spot.get_id, amount)
+
+                if log_success:
+                    return {
+                        "status": "success",
+                        "fee": amount,
+                        "duration": str(duration).split('.')[0],
+                        "plate": vehicle_obj.license_plate
+                    }
+                else:
+                    return {"status": "error", "message": "Database failed to log exit."}
+            else:
+                return {"status": "error", "message": f"Spot {spot.get_id} is already empty."}
+        else:
+            return {"status": "error", "message": "Could not locate active vehicle session."}
+
+
+    @classmethod
+    def process_web_search(cls, search_query):
+        """
+        Uses OOP ParkingLot functions to locate a vehicle by Spot ID or License Plate.
+        Calculates live accrued fee without removing the vehicle from memory.
+        """
+
+        spot = cls.parking_lot.get_spot_by_id(search_query)
+
+        if spot is None:
+            spot = cls.parking_lot.get_spot_by_plate(search_query)
+
+        if spot:
+            cls.parking_lot.cursor.execute("""
+                SELECT plate_no, entry_time, v_type
+                FROM active_sessions
+                WHERE spot_id = ?
+            """, (spot.get_id,))
+
+            session = cls.parking_lot.cursor.fetchone()
+            if session:
+                plate_no, entry_time_str, vtype = session
+
+                start_time = datetime.strptime(entry_time_str, "%Y-%m-%d %H:%M:%S")
+
+                if vtype == "S":
+                    vehicle_obj = Scooter(plate_no)
+                elif vtype == "C":
+                    vehicle_obj = Car(plate_no)
+                else:
+                    vehicle_obj = Truck(plate_no)
+
+                amount, billable_hours, duration, exit_time = cls.parking_lot.calculate_bill(start_time, vehicle_obj)
+
+                return {
+                    "status": "success",
+                    "plate": plate_no,
+                    "spot": spot.get_id,
+                    "entry": entry_time_str,
+                    "duration": str(duration).split('.')[0],  # Strips microseconds
+                    "fee": amount,
+                    "type": vtype
+                }
+
+        return {"status": "error", "message": "Vehicle not found. It may not be parked here."}
 
 

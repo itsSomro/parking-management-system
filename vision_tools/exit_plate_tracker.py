@@ -201,11 +201,11 @@ def main():
                     # SUCCESS: Valid Plate Found!
                     if validated_plate is not None:
                         print(f"\n==========================================")
-                        print(f"[SUCCESS] Vehicle Registered: {validated_plate}")
-                        print(f"[TRACKER] Assigned ID #{track_id}")
+                        print(f"[SUCCESS] Vehicle Logged: {validated_plate}")
+                        print(f"[EXIT TRACKER] Assigned ID #{track_id}")
                         print(f"==========================================\n")
 
-                        plate_file_path = os.path.join(PROJECT_ROOT, "latest_plate.txt")
+                        plate_file_path = os.path.join(PROJECT_ROOT, "latest_exit_plate.txt")
                         with open(plate_file_path, "w") as f:
                             f.write(validated_plate)
 
@@ -214,7 +214,7 @@ def main():
 
 
         display_frame = cv2.resize(frame, (800, 480))
-        cv2.imshow("Live Parking Gate Feed - Tracking Engine", display_frame)
+        cv2.imshow("Exit Parking Gate Feed - Tracking Engine", display_frame)
 
 
         if cv2.waitKey(1) & 0xFF == ord('q'):

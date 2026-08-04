@@ -81,7 +81,7 @@ class ParkingLot:
         """, (spot_id,))
 
         active_data = self.cursor.fetchone()
-        print(f"\n[DEBUG] active_data fetchone result: {active_data}")
+        # print(f"\n[DEBUG] active_data fetchone result: {active_data}")
 
         if active_data:
             plate_num, time_of_entry = active_data
@@ -94,9 +94,9 @@ class ParkingLot:
                 vehicle = Truck(plate_num)
 
             db_time = datetime.strptime(time_of_entry, "%Y-%m-%d %H:%M:%S")
-            print(f"[DEBUG] Attempting to park {vehicle.license_plate} into {new_spot.get_id}")
+            # print(f"[DEBUG] Attempting to park {vehicle.license_plate} into {new_spot.get_id}")
             new_spot.park_vehicle(vehicle, historical_datetime=db_time)
-            print(f"[DEBUG] Is spot free after parking? {new_spot.is_free()}\n")
+            # print(f"[DEBUG] Is spot free after parking? {new_spot.is_free()}\n")
 
         return new_spot
 
@@ -268,6 +268,62 @@ class ParkingLot:
                                 INSERT OR REPLACE INTO billing_rates (v_type, hourly_rate)
                                 VALUES (?, ?)
                                 """, (v_type, rate))
+        self.conn.commit()
+
+
+    def get_floor_layout(self):
+        """
+        Retrieves the current spot counts per floor and vehicle type.
+        Returns a 2D dictionary format perfectly matched for the Web UI:
+        e.g., {0: {'C': 10, 'S': 5, 'T': 2}, 1: {'C': 15, 'S': 0, 'T': 0}}
+        """
+        self.cursor.execute("""
+            SELECT floor_no, v_type, COUNT(*)
+            FROM lot_inventory
+            GROUP BY floor_no, v_type
+        """)
+
+        layout = {}
+
+        for floor, v_type, count in self.cursor.fetchall():
+            if floor not in layout:
+                layout[floor] = {'C': 0, 'S': 0, 'T': 0}
+
+            if v_type in layout[floor]:
+                layout[floor][v_type] = count
+
+        return layout
+
+
+    def update_lot_layout(self, new_floor_configs):
+        """
+        Accepts a 2D dictionary from the Web UI: {0: {'C': 15, 'S': 5, 'T': 5}, ...}
+        Compares it to the current layout and automatically adds/removes spots to match.
+        """
+        current_layout = self.get_floor_layout()
+
+        for floor_str, vehicle_counts in new_floor_configs.items():
+            floor = int(floor_str)
+
+            for v_type, new_count in vehicle_counts.items():
+                current_count = current_layout.get(floor, {}).get(v_type, 0)
+
+                # SCENARIO 1: We need to ADD spots
+                if new_count > current_count:
+                    start = current_count + 1
+                    stop = new_count + 1
+
+                    self.add_spots(floor, start, stop, v_type)
+
+                # SCENARIO 2: We need to REMOVE spots
+                elif new_count < current_count:
+                    start = new_count + 1
+                    stop = current_count + 1
+
+                    self.remove_spots(floor, start, stop, v_type)
+
+                # SCENARIO 3: new_count == current_count
+                # No changes needed for this vehicle type on this floor, so it safely skips!
 
 
     def calculate_bill(self, start_time, vehicle_type):

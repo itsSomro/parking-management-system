@@ -147,3 +147,36 @@ class Database:
 
         return df
 
+
+    def get_current_rates(self):
+        self.cursor.execute("""
+            SELECT v_type, hourly_rate
+            FROM billing_rates
+        """)
+        rates = self.cursor.fetchall()
+
+        rate_dict = {'S': 0.0, 'C': 0.0, 'T': 0.0}
+
+        for v_type, rate in rates:
+            if v_type in rate_dict:
+                rate_dict[v_type] = rate
+
+        return rate_dict
+
+    def get_all_users(self):
+        self.cursor.execute("""
+            SELECT user_id, username, role
+            FROM users
+            ORDER BY user_id ASC
+        """)
+        return [{"user_id": row[0], "username": row[1], "role": row[2]} for row in self.cursor.fetchall()]
+
+
+    def delete_user(self, user_id):
+        self.cursor.execute("""
+            DELETE
+            FROM users
+            WHERE user_id = ?
+        """, (user_id,))
+        self.conn.commit()
+
